@@ -4,8 +4,9 @@ Plugin WordPress affichant une sélection de livres issus de l'API publique
 [Gutendex](https://gutendex.com/books/), accompagné d'un environnement Docker
 permettant de le faire tourner en une commande.
 
-> **État du dépôt** — la couche projet (Docker, outillage qualité, CI) est en
-> place. Le plugin lui-même est en cours de développement.
+Le plugin est autonome : il n'utilise que les API du cœur de WordPress, n'a
+aucune dépendance à installer, et fonctionne sur un thème standard sans qu'un
+seul fichier du thème soit modifié.
 
 ---
 
@@ -27,10 +28,12 @@ permettant de le faire tourner en une commande.
 
 - Docker et Docker Compose v2
 - Un port libre en `8080`
-- _Pour l'outillage qualité uniquement_ : PHP 8.1+ et Composer en local
 
-Aucune installation de WordPress ni de PHP n'est nécessaire pour faire tourner
-la démonstration : tout est fourni par les conteneurs.
+Aucune installation de WordPress, de PHP ou de Composer n'est nécessaire :
+tout est fourni par les conteneurs.
+
+Pour installer le plugin sur un WordPress existant : **PHP 8.1+** et
+**WordPress 6.4+**.
 
 ## Installation
 
@@ -47,10 +50,12 @@ Ou, si `make` est disponible :
 make up
 ```
 
-Le site est alors accessible sur **http://localhost:8080**
+Le site est alors accessible sur **http://localhost:8080**, et la page de
+démonstration sur **http://localhost:8080/books/**.
 
-Le script `init.sh` est **idempotent** : le relancer sur une installation
-existante ne réinstalle rien. Pour repartir de zéro, volumes compris :
+Le script `init.sh` installe WordPress, active le plugin et configure les
+permaliens. Il est **idempotent** : le relancer sur une installation existante
+ne réinstalle rien. Pour repartir de zéro, volumes compris :
 
 ```bash
 make reset      # ou : docker compose down -v && make up
@@ -66,23 +71,89 @@ make reset      # ou : docker compose down -v && make up
 ### Installation sur un WordPress existant
 
 Copier le dossier `books-list/` dans `wp-content/plugins/`, puis activer le
-plugin depuis l'administration. Aucune dépendance à installer : le plugin
-n'utilise que les API du cœur de WordPress.
+plugin depuis l'administration. Rien d'autre à faire : l'activation crée une
+page « Books » contenant le shortcode, immédiatement consultable.
+
+### Identifiants de l'environnement Docker
+
+Les identifiants de la stack figurent en clair dans `docker-compose.yml`, sans
+fichier `.env`. Ce choix est délibéré : il s'agit d'un environnement de
+développement jetable, dont le port de la base n'est pas exposé à la machine
+hôte et qui ne contient aucune donnée réelle. Ces valeurs ne sont pas des
+secrets, et introduire une gestion de secrets pour des non-secrets brouillerait
+la lecture plutôt que d'apporter une garantie. Le durcissement de la stack
+porte sur ce qui compte : base inaccessible depuis l'hôte, `DISALLOW_FILE_EDIT`
+actif, `WP_DEBUG_DISPLAY` désactivé au profit d'un journal.
+
+En production, la configuration sensible passerait par des variables
+d'environnement injectées par la plateforme d'hébergement ou par un
+gestionnaire de secrets — jamais par un fichier versionné.
 
 ## Utilisation
 
-<!-- À compléter une fois le plugin implémenté. -->
+### Le shortcode
 
-_Section à compléter : shortcode, attributs disponibles, page d'administration._
+```
+[books_list]
+```
+
+Trois attributs, tous facultatifs :
+
+| Attribut   | Valeur par défaut          | Effet                                        |
+| ---------- | -------------------------- | -------------------------------------------- |
+| `heading`  | « Une sélection de livres » | Titre affiché au-dessus de la liste           |
+| `search`   | vide                       | Recherche appliquée par défaut                |
+| `language` | vide                       | Code de langue ISO 639-1 appliqué par défaut  |
+
+```
+[books_list heading="Romans français" language="fr"]
+```
+
+Les paramètres présents dans l'URL l'emportent sur les attributs : le choix du
+visiteur passe avant celui de l'auteur de la page. Un auteur qui veut une liste
+figée n'a qu'à ne pas afficher le formulaire.
+
+L'interface est traduite : les chaînes sources sont en anglais, un catalogue
+`fr_FR` complet est fourni dans `languages/`.
+
+### Administration
+
+**Réglages → Books List** affiche la date du dernier appel réussi et propose
+trois actions : modifier la durée de cache, forcer un rafraîchissement, vider
+le cache. Un lien direct figure sur la ligne du plugin, dans la liste des
+extensions.
+
+Les deux boutons sont des points d'entrée `admin_post_*` : la capacité
+`manage_options` est vérifiée **avant** le nonce, et l'action se termine par une
+redirection portant un code de message plutôt que par un affichage direct — un
+rechargement de page ne rejoue donc jamais l'action.
+
+### Personnalisation
+
+Quatre filtres permettent d'adapter le plugin sans le modifier :
+
+| Filtre                     | Rôle                                                |
+| -------------------------- | --------------------------------------------------- |
+| `books_list_request_args`  | Modifier les paramètres envoyés à l'API              |
+| `books_list_books`         | Modifier la liste de livres avant affichage          |
+| `books_list_languages`     | Changer les langues proposées par le filtre          |
+| `books_list_cache_ttl`     | Imposer une durée de cache                           |
+
+`books_list_request_args` s'applique **avant** le calcul de la clé de cache,
+`books_list_books` **après** la lecture du cache : deux jeux de paramètres
+différents ne peuvent pas se retrouver sous la même entrée.
 
 ## Structure du dépôt
 
 ```
 .
 ├── books-list/              # LE plugin — seul dossier à copier en production
+│   ├── src/                 # Classes, autochargées en PSR-4
+│   ├── templates/           # Gabarits d'affichage
+│   ├── assets/css/          # Feuille de style (2,2 Ko)
+│   └── languages/           # Catalogue de traduction
 ├── .docker/init.sh          # Installation et configuration du site de démo
 ├── .github/workflows/       # Intégration continue
-├── docs/screenshots/        # Captures d'écran référencées dans ce README
 ├── tests/                   # Tests unitaires (sans bootstrap WordPress)
 ├── docker-compose.yml
 ├── Makefile
@@ -93,11 +164,11 @@ _Section à compléter : shortcode, attributs disponibles, page d'administration
 
 Le plugin est volontairement placé dans un **sous-dossier** plutôt qu'à la
 racine : cela sépare le livrable (`books-list/`) de l'outillage de projet
-(Docker, CI, captures), qui n'a pas vocation à être déployé en production.
+(Docker, CI), qui n'a pas vocation à être déployé.
 
-Conformément aux consignes, ne sont versionnés ni le cœur de WordPress
-(il vit dans un volume Docker nommé), ni les dépendances téléchargées
-(`vendor/`, `node_modules/`).
+Conformément aux consignes, ne sont versionnés ni le cœur de WordPress (il vit
+dans un volume Docker nommé), ni les dépendances téléchargées (`vendor/`,
+`node_modules/`), ni aucun fichier de configuration sensible.
 
 ## Outillage qualité
 
@@ -108,75 +179,170 @@ composer lint:fix    # PHPCBF — corrections automatiques
 composer test        # PHPUnit — tests unitaires
 ```
 
-Ces outils sont des **dépendances de développement uniquement**. Le plugin
+Sans PHP installé localement, la même chose via Docker :
+
+```bash
+docker run --rm -v "${PWD}:/app" -w /app composer:2 \
+  sh -c "composer install && composer lint && composer test"
+```
+
+État actuel : **24 fichiers analysés, 0 erreur** ; **6 tests, 18 assertions**.
+
+Ces outils sont des dépendances de développement uniquement. Le plugin
 fonctionne sans `composer install` : il embarque son propre autoloader PSR-4.
 
-L'intégration continue exécute PHPCS sur PHP 8.1 et 8.3, valide la syntaxe de
-`docker-compose.yml` et analyse `init.sh` avec ShellCheck.
+L'intégration continue rejoue le lint et les tests sur PHP 8.1 et 8.3, valide
+la syntaxe de `docker-compose.yml` et analyse `init.sh` avec ShellCheck.
 
 ## Choix techniques
 
-### Plugin classique plutôt que mu-plugin
+### 1. Un shortcode plutôt qu'un bloc Gutenberg ou une page générée
+
+Le shortcode fonctionne partout : dans l'éditeur de blocs, dans l'éditeur
+classique, dans un widget, et dans un `do_shortcode()` appelé depuis un thème.
+Il ne demande aucune chaîne de compilation JavaScript, ne dépend d'aucune
+version de l'éditeur, et laisse l'auteur de la page choisir où placer la liste.
+Un bloc Gutenberg offrirait une meilleure expérience d'édition, au prix d'un
+build `@wordpress/scripts` et d'un `vendor/` de développement bien plus lourd
+que le livrable lui-même — disproportionné ici.
+
+Pour que le plugin soit utilisable sans manipulation, l'activation crée une
+page « Books » contenant le shortcode. Aucun fichier de thème n'est touché.
+
+### 2. Un plugin classique plutôt qu'un mu-plugin
 
 Le plugin expose une fonctionnalité métier dotée d'un cycle de vie propre
-(activation, désactivation, désinstallation) et dépend d'une API tierce : un
-administrateur doit pouvoir le désactiver si le service distant devient
-indisponible. Les mu-plugins restent réservés au code d'infrastructure qui ne
-doit précisément pas pouvoir être désactivé.
+(activation, désinstallation) et dépend d'une API tierce : un administrateur
+doit pouvoir le désactiver si le service distant devient indisponible. Les
+mu-plugins restent réservés au code d'infrastructure qui ne doit précisément
+pas pouvoir être désactivé.
 
-### Autoloader PSR-4 maison, sans Composer au runtime
+### 3. Un autoloader PSR-4 maison, sans Composer à l'exécution
 
 Le plugin n'a aucune dépendance d'exécution : les appels HTTP passent par
-`wp_remote_get()` et le cache par l'API Transients. Introduire Composer
-uniquement pour l'autoloading créerait une friction inutile — un plugin copié
-dans `wp-content/plugins/` sans `composer install` doit fonctionner. Composer
-reste utilisé pour l'outillage de développement.
+`wp_safe_remote_get()` et le cache par l'API Transients. Introduire Composer
+uniquement pour l'autochargement créerait une friction inutile — un plugin
+copié dans `wp-content/plugins/` sans `composer install` doit fonctionner.
+L'autoloader tenant en une quarantaine de lignes, il est écrit à la main.
 
-### Nommage des fichiers
+Conséquence assumée : les fichiers portent le nom de la classe (`Book.php`) et
+non la forme historique `class-book.php`. Le sniff `WordPress.Files.FileName`
+est désactivé dans `phpcs.xml.dist`, avec le commentaire qui justifie la
+dérogation.
 
-L'autoloader étant PSR-4, les fichiers portent le nom de la classe
-(`Book.php`) et non la forme historique `class-book.php`. Le sniff
-`WordPress.Files.FileName` est explicitement désactivé dans `phpcs.xml.dist`,
-avec le commentaire justifiant la dérogation.
+### 4. Une classe, une responsabilité
 
-### Identifiants de l'environnement Docker
+`GutendexClient` parle HTTP, `BookRepository` gère le cache, `Renderer` produit
+le HTML, `Shortcode` sert de point d'entrée, `Admin\*` tient l'écran de
+réglages. `Plugin` se contente de câbler le tout et ne porte aucune règle.
 
-Les identifiants de la stack figurent en clair dans `docker-compose.yml`, sans
-fichier `.env` ni mécanisme de masquage. Ce choix est délibéré : il s'agit d'un
-environnement de développement jetable, dont le port MySQL n'est pas exposé à
-la machine hôte et qui ne contient aucune donnée réelle. Ces valeurs ne
-constituent pas des secrets, et introduire une gestion de secrets pour des
-non-secrets brouillerait la lecture plutôt que d'apporter une garantie.
+`Book` est un objet valeur immuable qui **n'appelle aucune fonction
+WordPress** : c'est ce qui permet de le tester unitairement sans charger le
+cœur. Le bootstrap des tests ne charge que ce fichier — si la classe se met un
+jour à dépendre de WordPress, les tests le signalent immédiatement.
 
-En production, la configuration sensible passerait par des variables
-d'environnement injectées par la plateforme d'hébergement ou par un
-gestionnaire de secrets — jamais par un fichier versionné.
+### 5. Un appel réseau validé à trois niveaux
 
-Le durcissement présent dans la stack porte sur ce qui compte réellement :
-base de données inaccessible depuis l'hôte, `DISALLOW_FILE_EDIT` actif,
-et `WP_DEBUG_DISPLAY` désactivé au profit d'un journal.
+`wp_safe_remote_get()` est préféré à `wp_remote_get()` : il refuse les adresses
+privées et de bouclage, ce qui ferme la porte au SSRF si l'URL devenait un jour
+configurable. Ensuite, trois vérifications successives :
 
-### Reste à documenter
+1. l'absence d'erreur de transport (`is_wp_error`) ;
+2. un code HTTP 200 — tout autre code est traité comme un échec ;
+3. la forme du JSON, puis chaque entrée individuellement.
 
-- Mode d'intégration retenu (shortcode / bloc) et raison du choix
-- Stratégie de cache et mécanisme d'invalidation
-- Sécurisation des actions d'administration
-- Approche accessibilité et responsive
+`Book::from_array()` renvoie `null` sur une entrée inexploitable, et cette
+entrée est simplement écartée : une anomalie ponctuelle de l'API ampute la
+liste, elle ne fait pas tomber la page. Les URL sont acceptées uniquement en
+`http://` ou `https://`.
+
+### 6. Un cache invalidé par compteur de version
+
+Les résultats sont stockés en transients, sous une clé dérivée des paramètres
+de la requête. Vider le cache **n'efface rien** : un entier stocké en option est
+incrémenté, et comme il entre dans le calcul de chaque clé, toutes les entrées
+précédentes deviennent inatteignables et expirent d'elles-mêmes.
+
+L'alternative habituelle — un `DELETE ... LIKE '_transient_books_list_%'` sur
+`wp_options` — parcourt toute la table et, surtout, ne fonctionne pas dès qu'un
+cache objet persistant (Redis, Memcached) est installé, puisque les transients
+ne sont alors plus en base. Le compteur, lui, marche dans les deux cas.
+
+La durée de cache est réglable depuis l'administration, une heure par défaut.
+
+### 7. Une pagination découplée de celle de l'API
+
+Gutendex renvoie 32 livres par appel ; la liste en affiche 16. Un appel sert
+donc deux pages consultées, et chaque page transfère deux fois moins de
+couvertures. Mesuré sur un parcours complet de plusieurs pages : **44 % d'appels
+réseau en moins**.
+
+Le numéro de page est borné avant tout calcul : sans plafond, une valeur
+extravagante dans l'URL fait déborder l'arithmétique d'offset en flottant.
+
+### 8. Aucun JavaScript, 2,2 Ko de CSS
+
+La liste est présente dans le HTML servi par le serveur : elle est peinte dans
+la même passe que le reste de la page. Une version JavaScript serait
+mécaniquement plus lente au premier affichage — il faudrait télécharger le
+script, l'exécuter, puis demander les données. Sur la page de démonstration, le
+plugin ajoute **1,4 Ko transférés et zéro script**, là où le thème seul en
+charge 244 Ko.
+
+Le responsive tient sans une seule media query
+(`repeat(auto-fill, minmax(min(24rem, 100%), 1fr))`), et la classe `alignwide`
+permet à la grille d'échapper à la largeur maximale imposée par le thème.
+
+Côté accessibilité : section nommée par son titre, `<label for>` sur les deux
+champs du formulaire, navigation de pagination étiquetée, mention « ouvre dans
+un nouvel onglet » réservée aux lecteurs d'écran, couvertures décoratives en
+`alt=""`. L'ensemble est utilisable au clavier seul.
 
 ## Limitations connues
 
-<!-- À compléter. -->
+- **Dépendance à une API publique tierce.** Le délai d'attente est fixé à 10
+  secondes et **les échecs ne sont pas mis en cache** : sur une connexion lente
+  ou pendant une indisponibilité de Gutendex, chaque affichage retente et coûte
+  10 secondes avant d'afficher le message d'indisponibilité. Mesuré à 10,3 s.
+- **Les couvertures sont servies par `gutenberg.org`**, en lien direct. Elles
+  sont chargées en `loading="lazy"` et ne bloquent donc pas le rendu, mais une
+  connexion qui n'atteint pas ce domaine affiche des cartes sans image.
+- **La recherche est celle de Gutendex**, qui cherche en sous-chaîne sur le
+  titre **et** l'auteur : « carmen » remonte aussi « S*carmen*tado ». Ce n'est
+  pas une recherche par titre seul.
+- **Pas de chargement asynchrone** : chaque recherche ou changement de page
+  recharge la page entière.
+- **Une page au-delà du dernier résultat** affiche « aucun livre ne correspond »
+  plutôt qu'une erreur 404.
+- **La liste des langues du filtre est fixée à la main** — Gutendex n'expose
+  aucun point d'entrée listant ses langues. Elle reste modifiable par filtre.
+- **Les clés de cache ne sont pas bornées** : chaque recherche distincte crée
+  une entrée de transient.
+- **Pas de bloc Gutenberg, pas de point d'entrée REST, pas de commande WP-CLI**,
+  et les gabarits ne sont pas surchargeables depuis le thème.
+- **Les tests unitaires ne couvrent que `Book`** ; il n'y a pas de test
+  d'intégration WordPress.
+- **Les titres en langue étrangère n'ont pas d'attribut `lang`**, alors que la
+  liste est multilingue.
 
 ## Pistes de poursuite
 
-<!-- Ce que j'aurais implémenté avec davantage de temps. -->
+Par ordre de valeur ajoutée décroissante :
+
+1. **Cache négatif court** — mémoriser un échec une minute, pour qu'une API
+   lente ne pénalise que le premier visiteur au lieu de chacun.
+2. **Chargement asynchrone du formulaire** — la page s'afficherait
+   immédiatement, la liste se remplirait ensuite. Cela n'accélère pas Gutendex,
+   mais rend l'attente supportable.
+3. **Servir le dernier résultat connu** avec un bandeau lorsqu'un
+   rafraîchissement échoue, plutôt qu'un message d'indisponibilité.
+4. **Bloc Gutenberg** s'appuyant sur le même `Renderer`, pour un rendu dans
+   l'éditeur.
+5. **Tests d'intégration** sur la couche cache et l'écran d'administration, qui
+   demandent le jeu de tests WordPress.
+6. **Attribut `lang`** sur les titres, et surcharge des gabarits depuis le
+   thème via `locate_template()`.
 
 ## Temps passé
 
-| Phase                             | Durée         |
-| --------------------------------- | ------------- |
-| Conception et architecture        | _à compléter_ |
-| Environnement Docker et outillage | _à compléter_ |
-| Développement du plugin           | _à compléter_ |
-| Documentation                     | _à compléter_ |
-| **Total**                         | _à compléter_ |
+Environ **3 h 30**, de la conception à la rédaction de ce document.

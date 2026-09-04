@@ -52,5 +52,5 @@ ehthumbs.db
 *.swp
 *~
 
-# Agents d'audit — outillage personnel, pas le livrable
+# Agents d'audit
 /.claude/
