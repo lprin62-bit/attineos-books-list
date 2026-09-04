@@ -1,0 +1,56 @@
+# --- Dépendances téléchargées ---------------------------------------------
+# Jamais versionnées : elles se réinstallent via composer install / npm ci.
+/vendor/
+/node_modules/
+composer.phar
+
+# --- Environnement local ----------------------------------------------------
+# Le projet n'utilise pas de fichier .env (voir README, section Choix techniques).
+# Ces règles restent un filet de sécurité.
+.env
+.env.local
+.env.*.local
+
+# --- WordPress --------------------------------------------------------------
+# Le cœur vit dans un volume Docker nommé. Ces règles servent de filet si quelqu'un installe WordPress à la main dans le dépôt.
+/wordpress/
+/wp/
+/wp-admin/
+/wp-includes/
+/wp-content/
+wp-config.php
+wp-config-local.php
+
+# --- Documents de travail ---------------------------------------------------
+# Boîte noire du projet : décisions, journal, reste-à-faire.
+# Ne fait pas partie du livrable.
+state.md
+NOTES.md
+
+# --- Artefacts d'exécution --------------------------------------------------
+*.log
+debug.log
+error_log
+/.phpunit.cache/
+.phpunit.result.cache
+.phpcs-cache
+/coverage/
+/build/
+*.zip
+
+# --- Systèmes d'exploitation ------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# --- Éditeurs ---------------------------------------------------------------
+/.idea/
+/.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# Agents d'audit — outillage personnel, pas le livrable
+/.claude/

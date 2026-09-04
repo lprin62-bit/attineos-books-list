@@ -1,0 +1,93 @@
+/* Formulaire : une rangée qui passe à la ligne, sans media query. */
+.books-list__form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 1rem;
+	margin: 0 0 2rem;
+}
+
+.books-list__field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin: 0;
+}
+
+/* min() borne la largeur minimale au conteneur : sans lui, 16rem valent
+   512 px à 200 % de zoom et le champ déborde sous 512 px de large. */
+.books-list__form input[type="search"] {
+	min-width: min(16rem, 100%);
+}
+
+.books-list__grid {
+	display: grid;
+	/* 24rem : trois colonnes sur une largeur « wide », deux sur tablette,
+	   une sur mobile — sans media query, en réagissant au conteneur.
+	   min() borne le minimum à la largeur disponible, faute de quoi la
+	   grille déborde dès que le conteneur est plus étroit que 24rem. */
+	grid-template-columns: repeat(auto-fill, minmax(min(24rem, 100%), 1fr));
+	gap: 2rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Conteneur flex : la carte s'étire à la hauteur de la rangée sans
+   `height: 100%`, qui déborderait de la hauteur du padding et de la
+   bordure. Les thèmes appliquent souvent une marge aux <li> de contenu :
+   elle fausserait la gouttière de la grille. */
+.books-list__grid > li {
+	display: flex;
+	margin: 0;
+	min-width: 0;
+}
+
+.books-list__card {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 2rem;
+	border: 1px solid;
+}
+
+/* Boîte de hauteur fixe : les cartes gardent le même rythme, même sans
+   couverture. `contain` plutôt que `cover` pour ne pas rogner le titre
+   imprimé sur la jaquette. */
+.books-list__cover {
+	width: 100%;
+	height: 16rem;
+	object-fit: contain;
+	object-position: center;
+}
+
+.books-list__meta {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.25rem 0.75rem;
+	margin: auto 0 0;
+}
+
+.books-list__meta dd {
+	margin: 0;
+}
+
+.books-list__pagination {
+	margin-top: 2rem;
+}
+
+/* Masqué à l'écran, restitué par les lecteurs d'écran. Reprend le motif
+   .screen-reader-text du cœur de WordPress, sous notre propre classe pour
+   ne pas dépendre du thème. */
+.books-list__sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}

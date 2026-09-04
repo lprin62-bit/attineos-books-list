@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         cacheDirectory=".phpunit.cache">
+
+    <!--
+        Tests unitaires purs : ils ne chargent pas WordPress.
+        Seules les classes sans dépendance au cœur sont couvertes ici
+        (mapping des données de l'API, gestion des champs manquants).
+    -->
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/unit</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>books-list/src</directory>
+        </include>
+    </source>
+
+</phpunit>

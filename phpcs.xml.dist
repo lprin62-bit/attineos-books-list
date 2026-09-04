@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<ruleset name="Books List">
+
+    <description>WordPress Coding Standards appliqués au plugin books-list.</description>
+
+    <!-- Seul le plugin est analysé : le reste du dépôt est de l'outillage. -->
+    <file>books-list</file>
+    <file>tests</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="basepath" value="."/>
+    <arg name="parallel" value="8"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="WordPress">
+        <!--
+            Le plugin utilise un autoloader PSR-4 : les fichiers portent le nom
+            de la classe (Book.php) et non la forme historique class-book.php.
+            Dérogation consciente, alignée sur les plugins namespacés modernes.
+        -->
+        <exclude name="WordPress.Files.FileName"/>
+    </rule>
+
+    <!-- Compatibilité PHP annoncée dans l'en-tête du plugin. -->
+    <config name="testVersion" value="8.1-"/>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <!-- Version minimale de WordPress ciblée. -->
+    <config name="minimum_wp_version" value="6.4"/>
+
+    <!--
+        Un seul text domain autorisé. La forme <element> est obligatoire :
+        la liste séparée par des virgules est dépréciée depuis PHPCS 3.3.
+    -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="books-list"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Tout ce qui atterrit dans l'espace global doit être préfixé. -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="books_list"/>
+                <element value="BooksList"/>
+                <element value="BOOKS_LIST"/>
+            </property>
+        </properties>
+        <!--
+            Le bootstrap PHPUnit doit définir ABSPATH lui-même pour charger
+            les classes du plugin hors de WordPress : la constante est celle
+            du cœur, elle n'a pas à porter le préfixe du plugin.
+        -->
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!--
+        WordPress écrit ses propres fichiers de blocage d'indexation ainsi :
+        <?php // Silence is golden. Le sniff de docblock de fichier exige un
+        commentaire /** */ ; on suit la convention du cœur plutôt que le sniff.
+    -->
+    <rule ref="Squiz.Commenting.FileComment">
+        <exclude-pattern>*/index.php</exclude-pattern>
+    </rule>
+
+</ruleset>
