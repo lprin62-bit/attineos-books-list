@@ -51,7 +51,7 @@ make up
 ```
 
 Le site est accessible sur **http://localhost:8080**.
-la page de démonstration se trouve sur **http://localhost:8080/books/**.
+La page de démonstration se trouve sur **http://localhost:8080/books/**.
 
 Le script `init.sh` installe WordPress, active le plugin et configure les
 permaliens. Pour repartir de zéro, volumes compris :
