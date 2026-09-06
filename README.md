@@ -145,7 +145,7 @@ différents ne peuvent pas se retrouver sous la même entrée.
 ├── books-list/              # LE plugin — seul dossier à copier en production
 │   ├── src/                 # Classes, autochargées en PSR-4
 │   ├── templates/           # Gabarits d'affichage
-│   ├── assets/css/          # Feuille de style (2,2 Ko)
+│   ├── assets/css/          # Feuille de style
 │   └── languages/           # Catalogue de traduction
 ├── .docker/init.sh          # Installation et configuration du site de démo
 ├── .github/workflows/       # Intégration continue
