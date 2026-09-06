@@ -70,8 +70,9 @@ make reset      # ou : docker compose down -v && make up
 ### Installation sur un WordPress existant
 
 Copier le dossier `books-list/` dans `wp-content/plugins/`, puis activer le
-plugin depuis l'administration. Rien d'autre à faire : l'activation crée une
+plugin depuis l'administration. L'activation crée une
 page « Books » contenant le shortcode, immédiatement consultable.
+À noter : cette solution d'installation n'a pas été testée en situation réelle.
 
 ### Identifiants de l'environnement Docker
 
