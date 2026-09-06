@@ -50,12 +50,11 @@ Ou, si `make` est disponible :
 make up
 ```
 
-Le site est alors accessible sur **http://localhost:8080**, et la page de
-démonstration sur **http://localhost:8080/books/**.
+Le site est accessible sur **http://localhost:8080**.
+la page de démonstration se trouve sur **http://localhost:8080/books/**.
 
 Le script `init.sh` installe WordPress, active le plugin et configure les
-permaliens. Il est **idempotent** : le relancer sur une installation existante
-ne réinstalle rien. Pour repartir de zéro, volumes compris :
+permaliens. Pour repartir de zéro, volumes compris :
 
 ```bash
 make reset      # ou : docker compose down -v && make up
@@ -80,14 +79,11 @@ Les identifiants de la stack figurent en clair dans `docker-compose.yml`, sans
 fichier `.env`. Ce choix est délibéré : il s'agit d'un environnement de
 développement jetable, dont le port de la base n'est pas exposé à la machine
 hôte et qui ne contient aucune donnée réelle. Ces valeurs ne sont pas des
-secrets, et introduire une gestion de secrets pour des non-secrets brouillerait
-la lecture plutôt que d'apporter une garantie. Le durcissement de la stack
-porte sur ce qui compte : base inaccessible depuis l'hôte, `DISALLOW_FILE_EDIT`
-actif, `WP_DEBUG_DISPLAY` désactivé au profit d'un journal.
+secrets.
 
-En production, la configuration sensible passerait par des variables
+En production, la configuration sensible passe par des variables
 d'environnement injectées par la plateforme d'hébergement ou par un
-gestionnaire de secrets — jamais par un fichier versionné.
+gestionnaire de secrets.
 
 ## Utilisation
 
@@ -99,19 +95,18 @@ gestionnaire de secrets — jamais par un fichier versionné.
 
 Trois attributs, tous facultatifs :
 
-| Attribut   | Valeur par défaut          | Effet                                        |
-| ---------- | -------------------------- | -------------------------------------------- |
-| `heading`  | « Une sélection de livres » | Titre affiché au-dessus de la liste           |
-| `search`   | vide                       | Recherche appliquée par défaut                |
-| `language` | vide                       | Code de langue ISO 639-1 appliqué par défaut  |
+| Attribut   | Valeur par défaut           | Effet                                        |
+| ---------- | --------------------------- | -------------------------------------------- |
+| `heading`  | « Une sélection de livres » | Titre affiché au-dessus de la liste          |
+| `search`   | vide                        | Recherche appliquée par défaut               |
+| `language` | vide                        | Code de langue ISO 639-1 appliqué par défaut |
 
 ```
 [books_list heading="Romans français" language="fr"]
 ```
 
 Les paramètres présents dans l'URL l'emportent sur les attributs : le choix du
-visiteur passe avant celui de l'auteur de la page. Un auteur qui veut une liste
-figée n'a qu'à ne pas afficher le formulaire.
+visiteur passe avant celui de l'auteur de la page.
 
 L'interface est traduite : les chaînes sources sont en anglais, un catalogue
 `fr_FR` complet est fourni dans `languages/`.
@@ -132,12 +127,12 @@ rechargement de page ne rejoue donc jamais l'action.
 
 Quatre filtres permettent d'adapter le plugin sans le modifier :
 
-| Filtre                     | Rôle                                                |
-| -------------------------- | --------------------------------------------------- |
-| `books_list_request_args`  | Modifier les paramètres envoyés à l'API              |
-| `books_list_books`         | Modifier la liste de livres avant affichage          |
-| `books_list_languages`     | Changer les langues proposées par le filtre          |
-| `books_list_cache_ttl`     | Imposer une durée de cache                           |
+| Filtre                    | Rôle                                        |
+| ------------------------- | ------------------------------------------- |
+| `books_list_request_args` | Modifier les paramètres envoyés à l'API     |
+| `books_list_books`        | Modifier la liste de livres avant affichage |
+| `books_list_languages`    | Changer les langues proposées par le filtre |
+| `books_list_cache_ttl`    | Imposer une durée de cache                  |
 
 `books_list_request_args` s'applique **avant** le calcul de la clé de cache,
 `books_list_books` **après** la lecture du cache : deux jeux de paramètres
@@ -204,12 +199,12 @@ Il ne demande aucune chaîne de compilation JavaScript, ne dépend d'aucune
 version de l'éditeur, et laisse l'auteur de la page choisir où placer la liste.
 Un bloc Gutenberg offrirait une meilleure expérience d'édition, au prix d'un
 build `@wordpress/scripts` et d'un `vendor/` de développement bien plus lourd
-que le livrable lui-même — disproportionné ici.
+que le livrable lui-même. J'ai trouvé que le dispositif était ici disproportionné par rapport à la demande.
 
 Pour que le plugin soit utilisable sans manipulation, l'activation crée une
 page « Books » contenant le shortcode. Aucun fichier de thème n'est touché.
 
-### 2. Un plugin classique plutôt qu'un mu-plugin
+### 2. Choix d'un plugin classique plutôt qu'un mu-plugin
 
 Le plugin expose une fonctionnalité métier dotée d'un cycle de vie propre
 (activation, désinstallation) et dépend d'une API tierce : un administrateur
@@ -223,7 +218,7 @@ Le plugin n'a aucune dépendance d'exécution : les appels HTTP passent par
 `wp_safe_remote_get()` et le cache par l'API Transients. Introduire Composer
 uniquement pour l'autochargement créerait une friction inutile — un plugin
 copié dans `wp-content/plugins/` sans `composer install` doit fonctionner.
-L'autoloader tenant en une quarantaine de lignes, il est écrit à la main.
+L'autoloader tenant en moins de quarante lignes, il est écrit en dur.
 
 Conséquence assumée : les fichiers portent le nom de la classe (`Book.php`) et
 non la forme historique `class-book.php`. Le sniff `WordPress.Files.FileName`
@@ -236,8 +231,7 @@ dérogation.
 le HTML, `Shortcode` sert de point d'entrée, `Admin\*` tient l'écran de
 réglages. `Plugin` se contente de câbler le tout et ne porte aucune règle.
 
-`Book` est un objet valeur immuable qui **n'appelle aucune fonction
-WordPress** : c'est ce qui permet de le tester unitairement sans charger le
+`Book` est un objet valeur immuable qui **n'appelle aucune fonction WordPress** : c'est ce qui permet de le tester unitairement sans charger le
 cœur. Le bootstrap des tests ne charge que ce fichier — si la classe se met un
 jour à dépendre de WordPress, les tests le signalent immédiatement.
 
@@ -274,18 +268,17 @@ La durée de cache est réglable depuis l'administration, une heure par défaut.
 
 Gutendex renvoie 32 livres par appel ; la liste en affiche 16. Un appel sert
 donc deux pages consultées, et chaque page transfère deux fois moins de
-couvertures. Mesuré sur un parcours complet de plusieurs pages : **44 % d'appels
-réseau en moins**.
+couvertures. Mesuré sur un parcours complet de plusieurs pages : **44 % d'appels réseau en moins**.
 
 Le numéro de page est borné avant tout calcul : sans plafond, une valeur
 extravagante dans l'URL fait déborder l'arithmétique d'offset en flottant.
 
-### 8. Aucun JavaScript, 2,2 Ko de CSS
+### 8. JavaScript et CSS
 
 La liste est présente dans le HTML servi par le serveur : elle est peinte dans
 la même passe que le reste de la page. Une version JavaScript serait
-mécaniquement plus lente au premier affichage — il faudrait télécharger le
-script, l'exécuter, puis demander les données. Sur la page de démonstration, le
+mécaniquement plus lente au premier affichage : téléchargement du
+script, l'exécution, puis demande des données. Sur la page de démonstration, le
 plugin ajoute **1,4 Ko transférés et zéro script**, là où le thème seul en
 charge 244 Ko.
 
@@ -303,13 +296,15 @@ un nouvel onglet » réservée aux lecteurs d'écran, couvertures décoratives e
 - **Dépendance à une API publique tierce.** Le délai d'attente est fixé à 10
   secondes et **les échecs ne sont pas mis en cache** : sur une connexion lente
   ou pendant une indisponibilité de Gutendex, chaque affichage retente et coûte
-  10 secondes avant d'afficher le message d'indisponibilité. Mesuré à 10,3 s.
+  10 secondes avant d'afficher le message d'indisponibilité. Mesuré à 10,3 s. 
+  Des tests supplémentaires sont à réaliser pour accélérer le temps de chargement, que je trouve un peu long.
 - **Les couvertures sont servies par `gutenberg.org`**, en lien direct. Elles
   sont chargées en `loading="lazy"` et ne bloquent donc pas le rendu, mais une
   connexion qui n'atteint pas ce domaine affiche des cartes sans image.
 - **La recherche est celle de Gutendex**, qui cherche en sous-chaîne sur le
   titre **et** l'auteur : « carmen » remonte aussi « S*carmen*tado ». Ce n'est
   pas une recherche par titre seul.
+  De nombreux échecs de la recherche, probablement liés à la connexion internet un peu lente. Mais des tests supplémentaires sont à réaliser pour s'assurer que le problème vient effectivement de là.
 - **Pas de chargement asynchrone** : chaque recherche ou changement de page
   recharge la page entière.
 - **Une page au-delà du dernier résultat** affiche « aucun livre ne correspond »
@@ -320,10 +315,11 @@ un nouvel onglet » réservée aux lecteurs d'écran, couvertures décoratives e
   une entrée de transient.
 - **Pas de bloc Gutenberg, pas de point d'entrée REST, pas de commande WP-CLI**,
   et les gabarits ne sont pas surchargeables depuis le thème.
-- **Les tests unitaires ne couvrent que `Book`** ; il n'y a pas de test
+- **Les tests unitaires ne couvrent que `Book`** ; il n'y a pas eu de test
   d'intégration WordPress.
 - **Les titres en langue étrangère n'ont pas d'attribut `lang`**, alors que la
   liste est multilingue.
+
 
 ## Pistes de poursuite
 
@@ -342,6 +338,9 @@ Par ordre de valeur ajoutée décroissante :
    demandent le jeu de tests WordPress.
 6. **Attribut `lang`** sur les titres, et surcharge des gabarits depuis le
    thème via `locate_template()`.
+7. ** Des commentaires en multilingue** La partie du plugin est développée avec des commentaires
+en anglais, mais les fichiers de configuration (Docker et cie) + le readme sont en français.
+Manque de cohérence à ce niveau-là. 
 
 ## Temps passé
 
